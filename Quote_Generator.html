@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quote Generator</title>
+    <style>
+        #mycanvas {
+            border: 7px solid black
+        }
+    </style>
+
+    <script src="./libs/grafkom_lib_matrix_transformation.js"></script>
+    <script src="./libs/graphics_lib.js"></script>
+    <script src="./libs/process.js"></script>
+    <script src="./libs/BoundaryFill.js"></script>
+
+</head>
+
+<body>
+    <div id="myData">
+    </div>
+    <canvas width="1000" height="1000" id="mycanvas">
+    </canvas>
+    <script>
+        const canvas = document.querySelector("#mycanvas");
+        const ctx = canvas.getContext("2d");
+        let dataGambar = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let coordQueue = [];
+        let circleParams = [canvas.width / 2, canvas.height * 7 / 8, 26]
+        let pos0 = [
+            [canvas.width / 2 - 125,
+                canvas.height / 2 - 125
+            ]
+        ]
+        let paperSize = [250, 250]
+            //background
+
+        rectangular(canvas.width, canvas.height, [0, 350], 116, 102, 59) //dirt
+        rectangular(canvas.width, 50, [0, 300], 52, 140, 49) //greengrass
+
+        let skyColor = [155, 205, 255];
+        let invert = false;
+        let initialPos = [100, 216];
+        let pos2 = [500, 100];
+
+        let invertColor = false;
+
+        let matriksRotasi = MatrixGrafkom.createFixedPointRotation([500, 600], 0.02);
+
+        function timeCycle() {
+            dataGambar = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            rectangular(canvas.width, 300, [0, 0], skyColor[0], skyColor[1], skyColor[2])
+
+            if (!invert) { //when it is noon, transitioning to night
+                for (let i = 0; i <= 2; i++) {
+                    skyColor[i] -= 5;
+                }
+            } else { //when it is night, transitioning to noon
+                for (let i = 0; i <= 2; i++) {
+                    skyColor[i] += 5;
+                }
+            }
+
+            if (skyColor[1] <= -205 || skyColor[1] >= 205) {
+                invert = !invert
+            }
+
+            if (pos2[1] <= 210) { //limiting the arch orbit
+                if (!invertColor) {
+                    thickCircleWhole(dataGambar, {
+                        xc: pos2[0],
+                        yc: pos2[1]
+                    }, canvas.width / 25, {
+                        r: 220,
+                        g: 223,
+                        b: 5
+                    }, canvas.width / 25)
+                } else {
+                    thickCircleWhole(dataGambar, {
+                        xc: pos2[0],
+                        yc: pos2[1]
+                    }, canvas.width / 25, {
+                        r: 255,
+                        g: 255,
+                        b: 255
+                    }, canvas.width / 25)
+                }
+            } else { //change scene of color when reset the rise of the moon or the sun
+                invertColor = !invertColor
+                pos2 = initialPos;
+            }
+
+            pos2 = MatrixGrafkom.transformPoint(pos2, matriksRotasi)
+
+            requestAnimationFrame(timeCycle)
+        }
+
+        timeCycle();
+
+        base();
+        button(circleParams[0], circleParams[1], circleParams[2]);
+
+
+
+
+        canvas.addEventListener("click", (event) => {
+            ctx.clearRect(0, 350, canvas.width, canvas.height)
+
+            rectangular(canvas.width, canvas.height, [0, 350], 116, 102, 59) //dirt
+            rectangular(canvas.width, 50, [0, 300], 52, 140, 49) //greengrass
+            for (let i = 0; i <= 30; i++) {
+                rectangular(25, 25, [Math.ceil(Math.random() * canvas.width), Math.ceil(Math.random() * canvas.height) + 350], 93, 65, 54)
+            }
+            for (let i = 0; i <= 30; i++) {
+                rectangular(25, 25, [Math.ceil(Math.random() * canvas.width), Math.ceil(Math.random() * canvas.height) + 350], 63, 39, 37)
+            }
+            for (let i = 0; i <= 30; i++) {
+                rectangular(25, 25, [Math.ceil(Math.random() * canvas.width), Math.ceil(Math.random() * canvas.height) + 350], 142, 110, 99)
+            }
+
+            base();
+            button(circleParams[0], circleParams[1], circleParams[2]);
+
+            dataGambar = ctx.getImageData(0, 0, canvas.width, canvas.height)
+            paper(paperSize[0], paperSize[1], pos0);
+            if (event.offsetX > circleParams[0] - circleParams[2] && event.offsetX < circleParams[0] + circleParams[2] &&
+                event.offsetY > circleParams[1] - circleParams[2] && event.offsetX < circleParams[1] + circleParams[2]) {
+                //console.log("masuk")
+                readJson("./assets/quotes.json", data => {
+                    var jsonObject = JSON.parse(data);
+                    var randomizer = Math.ceil(Math.random() * jsonObject.quotes.length)
+                    for (var i = 0; i < jsonObject.quotes.length; i++) {
+                        console.log(randomizer)
+                        var q = jsonObject.quotes[i];
+                        var r = jsonObject.quotes[randomizer]
+                        if (q === r) {
+                            console.log(r.author.length)
+                            ctx.font = "13px Cursive";
+                            ctx.fillText(" \" " + r.quote.slice(0, jsonObject.quotes.length / 5), canvas.width / 2 - paperSize[0] / 4, canvas.height / 2, 245)
+                            for (let i = 1; i <= 3; i++) {
+                                ctx.fillText(r.quote.slice(jsonObject.quotes.length * i / 5, jsonObject.quotes.length * (i + 1) / 5), canvas.width / 2 - paperSize[0] / 4, canvas.height / 2 + i * 13, 245)
+
+                            }
+                            ctx.fillText(r.quote.slice(jsonObject.quotes.length * 4 / 5, jsonObject.quotes.length * 5 / 5) + " \" ", canvas.width / 2 - paperSize[0] / 4, canvas.height / 2 + 52, 245)
+                            ctx.fillText(" - " + r.author + " - ", canvas.width / 2 - r.author.length * 4, canvas.height / 2 + 110)
+
+                        }
+
+                    };
+                });
+            };
+
+        });
+    </script>
+
+</body>
+
+</html>
